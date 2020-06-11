@@ -117,9 +117,12 @@ struct weak_entry_t {
  * and weak_entry_t structs as their values.
  */
 struct weak_table_t {
-    weak_entry_t *weak_entries;
-    size_t    num_entries;
+    weak_entry_t *weak_entries;  //hash数组，其元素是存放弱引用对象信息的weak_entry_t
+    size_t    num_entries;       //hash数组元素个数
+    
+    //hash数组长度-1，会参与hash计算。（注意，这里是hash数组的长度，而不是元素个数。比如，数组长度可能是64，而元素个数仅存了2个）
     uintptr_t mask;
+    //可能会发生的hash冲突的最大次数，用于判断是否出现了逻辑错误（hash表中的冲突次数绝不会超过改值）
     uintptr_t max_hash_displacement;
 };
 
