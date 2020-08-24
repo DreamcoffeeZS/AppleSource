@@ -522,10 +522,14 @@ bucket_t * cache_t::find(SEL s, id receiver)
 
     bucket_t *b = buckets();
     mask_t m = mask();
+    // 通过cache_hash函数【begin  = k & m】计算出key值 k 对应的 index值 begin，用来记录查询起始索引
     mask_t begin = cache_hash(s, m);
+    // begin 赋值给 i，用于切换索引
     mask_t i = begin;
     do {
         if (b[i].sel() == 0  ||  b[i].sel() == s) {
+            //用这个i从散列表取值，如果取出来的bucket_t的 key = k，则查询成功，返回该bucket_t，
+            //如果key = 0，说明在索引i的位置上还没有缓存过方法，同样需要返回该bucket_t，用于中止缓存查询。
             return &b[i];
         }
     } while ((i = cache_next(i, m)) != begin);
