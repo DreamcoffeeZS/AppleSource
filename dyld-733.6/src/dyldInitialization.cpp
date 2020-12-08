@@ -113,6 +113,14 @@ static void rebaseDyld(const dyld3::MachOLoaded* dyldMH)
 //  This is code to bootstrap dyld.  This work in normally done for a program by dyld and crt.
 //  In dyld we have to do this manually.
 //
+/*
+该方法的主要作用：返回调用dyld的main函数
+ 
+machHeader就是Mach-O的头部，dyld加载的文件就是Mach-O可执行文件类型
+ 
+mach-O文件有四部分组成：Mach-O头部、laod command、section、Other Data
+ 
+*/
 uintptr_t start(const dyld3::MachOLoaded* appsMachHeader, int argc, const char* argv[],
 				const dyld3::MachOLoaded* dyldsMachHeader, uintptr_t* startGlue)
 {
