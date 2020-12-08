@@ -7524,19 +7524,24 @@ _class_createInstanceFromZone(Class cls, size_t extraBytes, void *zone,
     ASSERT(cls->isRealized());
 
     // Read class's info bits all at once for performance
+    //判断当前class或者superclass是否有.cxx_construct 构造方法的实现
     bool hasCxxCtor = cxxConstruct && cls->hasCxxCtor();
+    //判断判断当前class或者superclass是否有.cxx_destruct 析构方法的实现
     bool hasCxxDtor = cls->hasCxxDtor();
+    //具体标记某个类是否支持优化的isa
     bool fast = cls->canAllocNonpointer();
     size_t size;
 
+    //获取类的大小（传入额外字节的大小）
     size = cls->instanceSize(extraBytes);
     if (outAllocatedSize) *outAllocatedSize = size;
 
+    //已知zone=false，fast=true，则(!zone && fast)=true
     id obj;
     if (zone) {
         obj = (id)malloc_zone_calloc((malloc_zone_t *)zone, 1, size);
     } else {
-        obj = (id)calloc(1, size);
+        obj = (id)calloc(1, size); //用来动态开辟内存
     }
     if (slowpath(!obj)) {
         if (construct_flags & OBJECT_CONSTRUCT_CALL_BADALLOC) {

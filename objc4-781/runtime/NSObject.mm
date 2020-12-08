@@ -1701,7 +1701,17 @@ static ALWAYS_INLINE id
 callAlloc(Class cls, bool checkNil, bool allocWithZone=false)
 {
 #if __OBJC2__
+    /*
+     优化1：slowpath(x)表示x很可能为0，希望编译器进行优化；
+     这里表示cls大概率是有值的，编译器可以不用每次都读取return nil指令
+    */
     if (slowpath(checkNil && !cls)) return nil;
+    
+    /*
+     优化2：fastpath(x)表示x很可能不为0，希望编译器进行优化
+     hasCustomAWZ，即hasCustomAllocWithZone
+     这里表示有没有alloc/allocWithZone的实现(只有不是继承NSObject/NSProxy的类才为true）
+    */
     if (fastpath(!cls->ISA()->hasCustomAWZ())) {
         return _objc_rootAllocWithZone(cls, nil);
     }
@@ -1724,6 +1734,9 @@ _objc_rootAlloc(Class cls)
 }
 
 // Calls [cls alloc].
+/*
+根据汇编断点分析，NSObject执行alloc方法创建对象，调用的底层函数是objc_alloc
+*/
 id
 objc_alloc(Class cls)
 {

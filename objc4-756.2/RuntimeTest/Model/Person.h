@@ -15,13 +15,6 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property (nonatomic, assign) NSUInteger age;
 
-@property (nonatomic, assign) NSUInteger height;
-
-@property (nonatomic, copy) NSString *address;
-
-@property (nonatomic, copy) NSString *nickName;
-
-
 @end
 
 NS_ASSUME_NONNULL_END

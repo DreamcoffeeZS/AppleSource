@@ -119,6 +119,8 @@
 		87BB4EA70EC39854005D08E1 /* objc-probes.d in Sources */ = {isa = PBXBuildFile; fileRef = 87BB4E900EC39633005D08E1 /* objc-probes.d */; };
 		9672F7EE14D5F488007CEC96 /* NSObject.mm in Sources */ = {isa = PBXBuildFile; fileRef = 9672F7ED14D5F488007CEC96 /* NSObject.mm */; };
 		E8923DA5116AB2820071B552 /* objc-block-trampolines.mm in Sources */ = {isa = PBXBuildFile; fileRef = E8923DA0116AB2820071B552 /* objc-block-trampolines.mm */; };
+		E95CAE93257F211D00A5DCA3 /* Person.m in Sources */ = {isa = PBXBuildFile; fileRef = E95CAE92257F211D00A5DCA3 /* Person.m */; };
+		E95CAE99257F21EA00A5DCA3 /* libobjc.A.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D2AAC0630554660B00DB518D /* libobjc.A.dylib */; };
 		E9F414B9232254A400C349C7 /* lock_private.h in Headers */ = {isa = PBXBuildFile; fileRef = E9F414AB232254A400C349C7 /* lock_private.h */; };
 		E9F414BA232254A400C349C7 /* spinlock_private.h in Headers */ = {isa = PBXBuildFile; fileRef = E9F414AC232254A400C349C7 /* spinlock_private.h */; };
 		E9F414BB232254A400C349C7 /* CrashReporterClient.h in Headers */ = {isa = PBXBuildFile; fileRef = E9F414AD232254A400C349C7 /* CrashReporterClient.h */; };
@@ -269,6 +271,8 @@
 		E8923D9C116AB2820071B552 /* objc-blocktramps-i386.s */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.asm; name = "objc-blocktramps-i386.s"; path = "runtime/objc-blocktramps-i386.s"; sourceTree = "<group>"; };
 		E8923D9D116AB2820071B552 /* objc-blocktramps-x86_64.s */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.asm; name = "objc-blocktramps-x86_64.s"; path = "runtime/objc-blocktramps-x86_64.s"; sourceTree = "<group>"; };
 		E8923DA0116AB2820071B552 /* objc-block-trampolines.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = "objc-block-trampolines.mm"; path = "runtime/objc-block-trampolines.mm"; sourceTree = "<group>"; };
+		E95CAE91257F211D00A5DCA3 /* Person.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Person.h; sourceTree = "<group>"; };
+		E95CAE92257F211D00A5DCA3 /* Person.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Person.m; sourceTree = "<group>"; };
 		E9F414AB232254A400C349C7 /* lock_private.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = lock_private.h; sourceTree = "<group>"; };
 		E9F414AC232254A400C349C7 /* spinlock_private.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = spinlock_private.h; sourceTree = "<group>"; };
 		E9F414AD232254A400C349C7 /* CrashReporterClient.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CrashReporterClient.h; sourceTree = "<group>"; };
@@ -300,6 +304,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E95CAE99257F21EA00A5DCA3 /* libobjc.A.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -484,6 +489,15 @@
 			name = "Project Headers";
 			sourceTree = "<group>";
 		};
+		E95CAE90257F20EC00A5DCA3 /* Model */ = {
+			isa = PBXGroup;
+			children = (
+				E95CAE91257F211D00A5DCA3 /* Person.h */,
+				E95CAE92257F211D00A5DCA3 /* Person.m */,
+			);
+			path = Model;
+			sourceTree = "<group>";
+		};
 		E9F414AA232254A400C349C7 /* CommonHeaders */ = {
 			isa = PBXGroup;
 			children = (
@@ -556,6 +570,7 @@
 		E9F414D223225C2C00C349C7 /* RuntimeTest */ = {
 			isa = PBXGroup;
 			children = (
+				E95CAE90257F20EC00A5DCA3 /* Model */,
 				E9F414D323225C2C00C349C7 /* main.m */,
 			);
 			path = RuntimeTest;
@@ -850,6 +865,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				E9F414D423225C2C00C349C7 /* main.m in Sources */,
+				E95CAE93257F211D00A5DCA3 /* Person.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

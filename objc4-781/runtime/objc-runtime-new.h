@@ -1248,6 +1248,7 @@ struct objc_class : objc_object {
     cache_t cache;             // formerly cache pointer and vtable
     class_data_bits_t bits;    // class_rw_t * plus custom rr/alloc flags
 
+    //上述注释告诉我们：class_data_bits_t 相当于 class_rw_t 指针加上 rr/alloc 的标志。
     class_rw_t *data() const {
         return bits.data();
     }
@@ -1586,16 +1587,19 @@ struct objc_class : objc_object {
     }
 
     // May be unaligned depending on class's ivars.
+    //获取这个类所有属性内存的大小。这里只有继承NSObject的一个属性isa——返回8字节
     uint32_t unalignedInstanceSize() const {
         ASSERT(isRealized());
         return data()->ro()->instanceSize;
     }
 
     // Class's ivar size rounded up to a pointer-size boundary.
+    //获取类所需要的内存大小
     uint32_t alignedInstanceSize() const {
         return word_align(unalignedInstanceSize());
     }
 
+   
     size_t instanceSize(size_t extraBytes) const {
         if (fastpath(cache.hasFastInstanceSize(extraBytes))) {
             return cache.fastInstanceSize(extraBytes);
@@ -1603,6 +1607,7 @@ struct objc_class : objc_object {
 
         size_t size = alignedInstanceSize() + extraBytes;
         // CF requires all objects be at least 16 bytes.
+        //CoreFoundation需要所有对象之和至少是16字节
         if (size < 16) size = 16;
         return size;
     }

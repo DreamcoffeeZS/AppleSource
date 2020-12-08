@@ -916,8 +916,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				E95CAE85257F1E3B00A5DCA3 /* Person.m in Sources */,
 				E95CAE71257F1D0200A5DCA3 /* main.m in Sources */,
+				E95CAE85257F1E3B00A5DCA3 /* Person.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
