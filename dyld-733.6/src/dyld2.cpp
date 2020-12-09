@@ -903,6 +903,8 @@ void notifyKernel(const ImageLoader& image, bool loading) {
 	}
 }
 
+//执行初始化8.5：notifySingle获取到镜像的回调
+//notifySingle中并没有找到函数调用栈中的load_images，其实这是一个回调函数的调用
 static void notifySingle(dyld_image_states state, const ImageLoader* image, ImageLoader::InitializerTimingList* timingInfo)
 {
 	//dyld::log("notifySingle(state=%d, image=%s)\n", state, image->getPath());
@@ -935,6 +937,7 @@ static void notifySingle(dyld_image_states state, const ImageLoader* image, Imag
 	if ( (state == dyld_image_state_dependents_initialized) && (sNotifyObjCInit != NULL) && image->notifyObjC() ) {
 		uint64_t t0 = mach_absolute_time();
 		dyld3::ScopedTimer timer(DBG_DYLD_TIMING_OBJC_INIT, (uint64_t)image->machHeader(), 0, 0);
+		//我们关心的只有sNotifyObjCInit这个回调，继续寻找赋值的地方
 		(*sNotifyObjCInit)(image->getRealPath(), image->machHeader());
 		uint64_t t1 = mach_absolute_time();
 		uint64_t t2 = mach_absolute_time();
@@ -1563,6 +1566,7 @@ void initializeMainExecutable()
 	const size_t rootCount = sImageRoots.size();
 	if ( rootCount > 1 ) {
 		for(size_t i=1; i < rootCount; ++i) {
+			//执行初始化8.1：initializeMainExecutable方法调用runInitializers
 			sImageRoots[i]->runInitializers(gLinkContext, initializerTimes[0]);
 		}
 	}
@@ -4494,7 +4498,9 @@ void registerImageStateBatchChangeHandler(dyld_image_states state, dyld_image_st
 	}
 }
 
-
+//执行初始化8.6：sNotifyObjCInit在registerObjCNotifiers函数中赋值
+//_objc_init调用_dyld_objc_notify_register，并调用load_image
+//我们可以通过objc源码下符号断点来_dyld_objc_notify_register验证
 void registerObjCNotifiers(_dyld_objc_notify_mapped mapped, _dyld_objc_notify_init init, _dyld_objc_notify_unmapped unmapped)
 {
 	// record functions to call
@@ -6157,6 +6163,7 @@ _main(const macho_header* mainExecutableMH, uintptr_t mainExecutableSlide,
 #endif
 
 	uintptr_t result = 0;
+	//保存传入的可执行文件的头部（是一个struct macho_header结构体），后面根据头部访问信息
 	sMainExecutableMachHeader = mainExecutableMH;
 	sMainExecutableSlide = mainExecutableSlide;
 
@@ -6220,10 +6227,14 @@ _main(const macho_header* mainExecutableMH, uintptr_t mainExecutableSlide,
 #endif
 
 	CRSetCrashLogMessage("dyld: launch started");
-
+	
+	//根据可执行文件头部，参数等设置上下文信息
+	//调用setContext函数，传入Mach-O头部以及一些参数设置上下文
+	//configureProcessRestrictions检测进程是否受限，在上下文中做出对应处理
 	setContext(mainExecutableMH, argc, argv, envp, apple);
 
 	// Pickup the pointer to the exec path.
+	//获取可执行文件路径
 	sExecPath = _simple_getenv(apple, "executable_path");
 
 	// <rdar://problem/13868260> Remove interim apple[0] transition code from dyld
@@ -6240,6 +6251,7 @@ _main(const macho_header* mainExecutableMH, uintptr_t mainExecutableSlide,
 	}
 #endif
 
+	//将相对路径转换成绝对路径
 	if ( sExecPath[0] != '/' ) {
 		// have relative path, use cwd to make absolute
 		char cwdbuff[MAXPATHLEN];
@@ -6254,12 +6266,14 @@ _main(const macho_header* mainExecutableMH, uintptr_t mainExecutableSlide,
 	}
 
 	// Remember short name of process for later logging
+	//获取可执行文件的名字
 	sExecShortName = ::strrchr(sExecPath, '/');
 	if ( sExecShortName != NULL )
 		++sExecShortName;
 	else
 		sExecShortName = sExecPath;
 
+	//配置进程是否受限
     configureProcessRestrictions(mainExecutableMH, envp);
 
 	// Check if we should force dyld3.  Note we have to do this outside of the regular env parsing due to AMFI
@@ -6298,8 +6312,16 @@ _main(const macho_header* mainExecutableMH, uintptr_t mainExecutableSlide,
 	else
 #endif
 	{
-		/*【第一步：环境变量配置】
+		/**
+		 【第一步：环境变量配置】
 		 根据环境变量设置相应的值以及获取当前运行架构
+		 
+		 这一步主要是设置运行参数、环境变量等
+		 1. 代码在开始的时候，将入参mainExecutableMH赋值给了sMainExecutableMachHeader
+		 2. 这是一个macho_header结构体，表示的是当前主程序的Mach-O头部信息
+		 3. 加载器依据Mach-O头部信息就可以解析整个Mach-O文件信息。
+		 4.接着调用setContext()设置上下文信息，包括一些回调函数、参数、标志信息等。
+		 5.设置的回调函数都是dyld模块自身实现的，如loadLibrary()函数实际调用的是libraryLocator()，负责加载动态库。
 		 */
 		checkEnvironmentVariables(envp);
 		//如果DYLD_FALLBACK为nil，将其设置为默认值
@@ -6350,21 +6372,28 @@ _main(const macho_header* mainExecutableMH, uintptr_t mainExecutableSlide,
 	}
 #endif
 
-	//获取当前运行环境架构的信息
 	if ( sJustBuildClosure )
 		sClosureMode = ClosureMode::On;
+	
+	//根据Mach-O头部获取当前运行架构信息
 	getHostInfo(mainExecutableMH, mainExecutableSlide);
 
 	// load shared cache
-	/*【第二步：共享缓存】
+	/**
+	 【第二步：共享缓存】
 	 检查是否开启了共享缓存，以及共享缓存是否映射到共享区域，例如UIKit、CoreFoundation等
 	 在iOS中必须开启
+	 
+	 其中调用loadDyldCache函数有这么几种情况：
+	 1. 仅加载到当前进程mapCachePrivate（模拟器仅支持加载到当前进程）
+	 2. 共享缓存是第一次被加载，就去做加载操作mapCacheSystemWide
+	 3. 共享缓存不是第一次被加载，那么就不做任何处理
 	 */
 	checkSharedRegionDisable((dyld3::MachOLoaded*)mainExecutableMH, mainExecutableSlide);
 	if ( gLinkContext.sharedRegionMode != ImageLoader::kDontUseSharedRegion ) {
 #if TARGET_OS_SIMULATOR
-		//检查共享缓存是否映射到了共享区域
 		if ( sSharedCacheOverrideDir)
+			//检查共享缓存是否映射到了共享区域
 			mapSharedCache();
 #else
 		mapSharedCache();
@@ -6530,9 +6559,12 @@ reloadAllImages:
 
 		CRSetCrashLogMessage(sLoadingCrashMessage);
 		// instantiate ImageLoader for main executable
-		/*
+		/**
 		 【第三步：主程序初始化】
-		 调用instantiateFromLoadedImage函数，加载可执行文件，并实例化了一个ImageLoader对象
+		 将主程序的Mach-O加载进内存，并实例化一个ImageLoader并实例化了一个ImageLoader对象
+		 1. instantiateFromLoadedImage()首先调用isCompatibleMachO()
+		 2. 检测Mach-O头部的magic、cputype、cpusubtype等相关属性，判断Mach-O文件的兼容性；
+		 3.如果兼容性满足，则调用ImageLoaderMachO::instantiateMainExecutable()实例化主程序的ImageLoader，
 		 */
 		sMainExecutable = instantiateFromLoadedImage(mainExecutableMH, mainExecutableSlide, sExecPath);
 		gLinkContext.mainExecutable = sMainExecutable;
@@ -6576,6 +6608,7 @@ reloadAllImages:
 
 		// Now that shared cache is loaded, setup an versioned dylib overrides
 	#if SUPPORT_VERSIONED_PATHS
+		//检查库的版本是否有更新，有则覆盖原有的
 		checkVersionedPaths();
 	#endif
 
@@ -6598,14 +6631,16 @@ reloadAllImages:
 				gProcessInfo->dyldPath = strdup(dyldPathBuffer);
 		}
 
-		/*
-		 // load any inserted libraries
+		// load any inserted libraries
+		/**
 		 【第四步：插入动态库】
-		 历DYLD_INSERT_LIBRARIES环境变量，调用loadInsertedDylib加载
-		 
+		 这一步是加载环境变量DYLD_INSERT_LIBRARIES中配置的动态库，
+		 先判断环境变量DYLD_INSERT_LIBRARIES中是否存在要加载的动态库，如果存在则调用loadInsertedDylib()依次加载
+
+		  loadInsertedDylib内部会从DYLD_ROOT_PATH、LD_LIBRARY_PATH、DYLD_FRAMEWORK_PATH等路径查找dylib并且检查代码签名，无效则直接抛出异常
 		 */
 		if	( sEnv.DYLD_INSERT_LIBRARIES != NULL ) {
-			//加载所有DYLD_INSERT_LIBRARIES指定的库
+			//遍历DYLD_INSERT_LIBRARIES环境变量，调用loadInsertedDylib加载
 			for (const char* const* lib = sEnv.DYLD_INSERT_LIBRARIES; *lib != NULL; ++lib) 
 				loadInsertedDylib(*lib);
 		}
@@ -6626,7 +6661,16 @@ reloadAllImages:
 #endif
 		
 		/*
-		 【第五步：link 主程序】
+		 【第五步：链接主程序】
+		 这一步调用link()函数将实例化后的主程序进行动态修正，让二进制变为可正常执行的状态。
+		 1. link()函数内部调用了ImageLoader::link()函数，从源代码可以看到，这一步主要做了以下几个事情：
+		 2. recursiveLoadLibraries() 根据LC_LOAD_DYLIB加载命令把所有依赖库加载进内存。
+		 3. recursiveUpdateDepth() 递归刷新依赖库的层级。
+		 4. recursiveRebase() 由于ASLR的存在，必须递归对主程序以及依赖库进行重定位操作。
+		 5. recursiveBind() 把主程序二进制和依赖进来的动态库全部执行符号表绑定。
+		 6. weakBind() 如果链接的不是主程序二进制的话，会在此时执行弱符号绑定，主程序二进制则在link()完后再执行弱符号绑定，后面会进行分析。
+		 7. recursiveGetDOFSections()、context.registerDOFs() 注册DOF（DTrace Object Format）节。
+		 
 		 */
 		link(sMainExecutable, sEnv.DYLD_BIND_AT_LAUNCH, true, ImageLoader::RPathChain(NULL, NULL), -1);
 		sMainExecutable->setNeverUnloadRecursive();
@@ -6639,9 +6683,9 @@ reloadAllImages:
 		// do this after linking main executable so that any dylibs pulled in by inserted 
 		// dylibs (e.g. libSystem) will not be in front of dylibs the program uses
 		/*
-		【第六步：link 动态库】
-		 链接可执行文件后执行此操作
-		 这样插入的dylib(例如libSytem)插入的dylib不会在程序使用的dylib的前面
+		【第六步：链接动态库】
+		 这一步与链接主程序一样，将前面调用addImage()函数保存在sAllImages中的动态库列表循环取出并调用link()进行链接，
+		 需要注意的是，sAllImages中保存的第一项是主程序的镜像，所以要从i+1的位置开始，取到的才是动态库的ImageLoader：
 		*/
 		if ( sInsertedDylibCount > 0 ) {
 			for(unsigned int i=0; i < sInsertedDylibCount; ++i) {
@@ -6700,7 +6744,7 @@ reloadAllImages:
 	#endif
 
 		// apply interposing to initial set of images
-		/*
+		/**
 	   【第七步：弱符号绑定】
 		*/
 		for(int i=0; i < sImageRoots.size(); ++i) {
@@ -6736,10 +6780,16 @@ reloadAllImages:
 	#if SUPPORT_OLD_CRT_INITIALIZATION
 		// Old way is to run initializers via a callback from crt1.o
 		
-		/*
+		/**
 		 【第八步：执行初始化方法】
+		 initializeMainExecutable总结：
+		 1. runInitializers->processInitializers中，遍历recursiveInitialization递归初始化镜像
+		 2. 第一次执行时，进行libsystem初始化——doInitialization->doImageInit-> libSystemInitialized
+		 3. libsystem的初始化，会调用起libdispatch_init，libdispatch初始化会调用_os_object_init， 内部调用了_objc_init
+		 4. _objc_init中注册并保存了map_images、load_images、unmap_image函数地址
+		 5. 注册完毕继续回到recursiveInitialization递归下一次调用
 		 */
-		//旧方法是通过ctrl.o的回调运行初始化程序
+
 		if ( ! gRunInitializersOldWay ) 
 			initializeMainExecutable(); 
 	#else
@@ -6766,7 +6816,8 @@ reloadAllImages:
 #endif
 		{
 			// find entry point for main executable
-			/*【第九步：寻找主程序入口即main函数】：
+			/**
+			 【第九步：寻找主程序入口，即main函数】：
 			 从Load Command读取LC_MAIN入口，如果没有，就读取LC_UNIXTHREAD，
 			 这样就来到了日常开发中熟悉的main函数了
 			 */

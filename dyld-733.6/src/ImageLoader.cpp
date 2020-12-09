@@ -583,6 +583,8 @@ bool ImageLoader::decrementDlopenReferenceCount()
 // To handle dangling dylibs which are upward linked but not downward, all upward linked dylibs
 // have their initialization postponed until after the recursion through downward dylibs
 // has completed.
+
+//执行初始化8.3：遍历image，recursiveInitialization递归初始化镜像
 void ImageLoader::processInitializers(const LinkContext& context, mach_port_t thisThread,
 									 InitializerTimingList& timingInfo, ImageLoader::UninitedUpwards& images)
 {
@@ -600,7 +602,7 @@ void ImageLoader::processInitializers(const LinkContext& context, mach_port_t th
 		processInitializers(context, thisThread, timingInfo, ups);
 }
 
-
+//执行初始化8.2：runInitializers调用processInitializers为初始化做准备
 void ImageLoader::runInitializers(const LinkContext& context, InitializerTimingList& timingInfo)
 {
 	uint64_t t1 = mach_absolute_time();
@@ -1560,6 +1562,7 @@ void ImageLoader::InitializerTimingList::addTime(const char* name, uint64_t time
 	++count;
 }
 
+//执行初始化8.4：recursiveInitialization获取到镜像的初始化
 void ImageLoader::recursiveInitialization(const LinkContext& context, mach_port_t this_thread, const char* pathToInitialize,
 										  InitializerTimingList& timingInfo, UninitedUpwards& uninitUps)
 {

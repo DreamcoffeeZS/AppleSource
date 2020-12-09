@@ -917,14 +917,24 @@ void _objc_init(void)
     initialized = true;
     
     // fixme defer initialization until an objc-using image is found?
+    //读取影响运行时的环境变量。
     environ_init();
     tls_init();
+    
+    //运行C ++静态构造函数。libc在dyld调用我们的静态构造函数之前调用_objc_init()
     static_init();
     runtime_init();
+    //初始化libobjc的异常处理系统。由map_images()调用。
     exception_init();
     cache_init();
     _imp_implementationWithBlock_init();
 
+    /**
+     注册回调函数
+     dyld执行动态库初始化过程中会的执行一个回调：sNotifyObjCInit
+     sNotifyObjCInit经过_dyld_objc_notify_register进行赋值
+     此处可以看出，sNotifyObjCInit其实是绑定了load_images()函数
+     */
     _dyld_objc_notify_register(&map_images, load_images, unmap_image);
 
 #if __OBJC2__

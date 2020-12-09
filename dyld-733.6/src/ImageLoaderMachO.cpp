@@ -2242,6 +2242,8 @@ static void *stripPointer(void *ptr) {
 }
 
 
+
+//执行初始化8.9：doImageInit->libSystemInitialized->libdispatch_init->_os_object_init，内部调用_objc_init
 void ImageLoaderMachO::doImageInit(const LinkContext& context)
 {
 	if ( fHasDashInit ) {
@@ -2287,7 +2289,7 @@ static const char* libSystemPath(const ImageLoader::LinkContext& context)
 }
 
 
-
+//执行初始化8.10：doModInitFunctions内部调用__mod_init_funcs section，也就是constructor方法——C++构造方法
 void ImageLoaderMachO::doModInitFunctions(const LinkContext& context)
 {
 	if ( fHasInitializers ) {
@@ -2411,7 +2413,7 @@ void ImageLoaderMachO::doGetDOFSections(const LinkContext& context, std::vector<
 	}
 }	
 
-
+//执行初始化8.8：context.notifySingle之后，调用ImageLoaderMachO::doInitialization
 bool ImageLoaderMachO::doInitialization(const LinkContext& context)
 {
 	CRSetCrashLogMessage2(this->getPath());

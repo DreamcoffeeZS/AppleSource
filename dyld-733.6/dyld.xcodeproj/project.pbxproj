@@ -2826,6 +2826,7 @@
 				GCC_OPTIMIZATION_LEVEL = 0;
 				INSTALLHDRS_COPY_PHASE = YES;
 				PRODUCT_NAME = libdyld;
+				SDKROOT = macosx;
 			};
 			name = Debug;
 		};
@@ -2836,6 +2837,7 @@
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				INSTALLHDRS_COPY_PHASE = YES;
 				PRODUCT_NAME = libdyld;
+				SDKROOT = macosx;
 				ZERO_LINK = NO;
 			};
 			name = Release;
