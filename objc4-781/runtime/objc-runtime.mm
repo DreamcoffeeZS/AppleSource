@@ -429,6 +429,14 @@ void environ_init(void)
             if (PrintOptions && *opt->var) _objc_inform("%s is set", opt->env);
         }
     }
+    
+    //测试(此处非源码部分)，只是为了测试打印所有的环境变量
+    _objc_inform("试打印所有的环境变量");
+    for (size_t i = 0; i < sizeof(Settings)/sizeof(Settings[0]); i++) {
+        const option_t *opt = &Settings[i];
+        _objc_inform("%s: %s", opt->env, opt->help);
+        _objc_inform("%s is set", opt->env);
+    }
 }
 
 
@@ -513,7 +521,7 @@ void _objc_pthread_destroyspecific(void *arg)
 
 void tls_init(void)
 {
-#if SUPPORT_DIRECT_THREAD_KEYS
+#if SUPPORT_DIRECT_THREAD_KEYS //本地线程池，用来进行处理
     pthread_key_init_np(TLS_DIRECT_KEY, &_objc_pthread_destroyspecific);
 #else
     _objc_pthread_key = tls_create(&_objc_pthread_destroyspecific);

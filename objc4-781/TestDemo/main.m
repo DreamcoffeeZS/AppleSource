@@ -23,7 +23,7 @@ int main(int argc, const char * argv[]) {
         NSLog(@"\nsizeof：%lu\nclass_getInstanceSize：%lu\nmalloc_size：%lu", sizeof([ps class]), class_getInstanceSize([ps class]), malloc_size((__bridge const void *)(ps)));
         
         
-        return 0;
+         return 0;
     }
 }
 

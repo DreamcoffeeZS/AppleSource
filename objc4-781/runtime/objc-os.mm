@@ -917,22 +917,37 @@ void _objc_init(void)
     initialized = true;
     
     // fixme defer initialization until an objc-using image is found?
-    //读取影响运行时的环境变量。
+    //1.初始化一系列环境变量，并读取影响运行时的环境变量
     environ_init();
+    
+    //2.关于线程key的绑定
     tls_init();
     
-    //运行C ++静态构造函数。libc在dyld调用我们的静态构造函数之前调用_objc_init()
+    /*3.运行系统级别的C++静态构造函数
+    在dyld调用静态析构函数之前，libc会调用_objc_init
+    即系统级别的C++构造函数先于自定义的C++构造函数运行
+    */
     static_init();
+    
+    /*4.runtime运行时环境初始化，分为两部分：
+     unattachedCategories：分类初始化
+     allocatedClasses：类的表初始化
+     */
     runtime_init();
-    //初始化libobjc的异常处理系统。由map_images()调用。
+    
+    //5.初始化libobjc的异常处理系统。由map_images()调用
     exception_init();
+    
+    //cache缓存初始化
     cache_init();
+    
+    //启动回调机制，通常这不会做什么，因为所有的初始化都是惰性的，但是对于某些进程，我们会迫不及待地加载trampolines dylib
     _imp_implementationWithBlock_init();
 
     /**
      注册回调函数
      dyld执行动态库初始化过程中会的执行一个回调：sNotifyObjCInit
-     sNotifyObjCInit经过_dyld_objc_notify_register进行赋值
+     而sNotifyObjCInit经过_dyld_objc_notify_register进行赋值
      此处可以看出，sNotifyObjCInit其实是绑定了load_images()函数
      */
     _dyld_objc_notify_register(&map_images, load_images, unmap_image);
