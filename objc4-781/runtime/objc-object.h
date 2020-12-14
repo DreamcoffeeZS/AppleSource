@@ -492,7 +492,7 @@ objc_object::rootRetain(bool tryRetain, bool handleOverflow)
 
     bool sideTableLocked = false;
     bool transcribeToSideTable = false;
-
+    //为什么有isa？因为需要对引用计数+1，即retain+1，而引用计数存储在isa的bits中，需要进行新旧isa的替换
     isa_t oldisa;
     isa_t newisa;
 
@@ -500,7 +500,9 @@ objc_object::rootRetain(bool tryRetain, bool handleOverflow)
         transcribeToSideTable = false;
         oldisa = LoadExclusive(&isa.bits);
         newisa = oldisa;
+        //判断是否为nonpointer isa
         if (slowpath(!newisa.nonpointer)) {
+            //如果不是 nonpointer isa，直接操作散列表sidetable
             ClearExclusive(&isa.bits);
             if (rawISA()->isMetaClass()) return (id)this;
             if (!tryRetain && sideTableLocked) sidetable_unlock();
@@ -508,14 +510,17 @@ objc_object::rootRetain(bool tryRetain, bool handleOverflow)
             else return sidetable_retain();
         }
         // don't check newisa.fast_rr; we already called any RR overrides
+        //dealloc源码
         if (slowpath(tryRetain && newisa.deallocating)) {
             ClearExclusive(&isa.bits);
             if (!tryRetain && sideTableLocked) sidetable_unlock();
             return nil;
         }
         uintptr_t carry;
+        //执行引用计数+1操作，即对bits中的 1ULL<<45（arm64） 即extra_rc，用于该对象存储引用计数值
         newisa.bits = addc(newisa.bits, RC_ONE, 0, &carry);  // extra_rc++
 
+        //判断extra_rc是否满了，carry是标识符
         if (slowpath(carry)) {
             // newisa.extra_rc++ overflowed
             if (!handleOverflow) {
@@ -527,13 +532,17 @@ objc_object::rootRetain(bool tryRetain, bool handleOverflow)
             if (!tryRetain && !sideTableLocked) sidetable_lock();
             sideTableLocked = true;
             transcribeToSideTable = true;
+            //如果extra_rc满了，则直接将满状态的一半拿出来存到extra_rc
             newisa.extra_rc = RC_HALF;
+            //给一个标识符为YES，表示需要存储到散列表
             newisa.has_sidetable_rc = true;
         }
     } while (slowpath(!StoreExclusive(&isa.bits, oldisa.bits, newisa.bits)));
 
     if (slowpath(transcribeToSideTable)) {
         // Copy the other half of the retain counts to the side table.
+        //将另一半存在散列表的rc_half中，即满状态下是8位，一半就是1左移7位，即除以2
+         //这么操作的目的在于提高性能，因为如果都存在散列表中，当需要release-1时，需要去访问散列表，每次都需要开解锁，比较消耗性能。extra_rc存储一半的话，可以直接操作extra_rc即可，不需要操作散列表。性能会提高很多
         sidetable_addExtraRC_nolock(RC_HALF);
     }
 

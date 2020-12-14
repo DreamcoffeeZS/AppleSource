@@ -64,7 +64,14 @@ id objc_getProperty(id self, SEL _cmd, ptrdiff_t offset, BOOL atomic) {
     return objc_autoreleaseReturnValue(value);
 }
 
-
+/*
+ setProperty -> reallySetProperty
+ 对新值retain，旧值release
+ 
+ 进入objc_retain、objc_release源码,在这里都判断是否是小对象，
+ 如果是小对象，则不会进行retain或者release，会直接返回。
+ 因此可以得出一个结论：如果对象是小对象，不会进行retain 和 release
+ */
 static inline void reallySetProperty(id self, SEL _cmd, id newValue, ptrdiff_t offset, bool atomic, bool copy, bool mutableCopy) __attribute__((always_inline));
 
 static inline void reallySetProperty(id self, SEL _cmd, id newValue, ptrdiff_t offset, bool atomic, bool copy, bool mutableCopy)

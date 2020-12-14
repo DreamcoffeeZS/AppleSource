@@ -7873,6 +7873,7 @@ initializeTaggedPointerObfuscator(void)
         DisableTaggedPointerObfuscation) {
         objc_debug_taggedpointer_obfuscator = 0;
     } else {
+        //在iOS14之后，对小对象进行了混淆，通过与操作+_OBJC_TAG_MASK混淆
         // Pull random data into the variable, then shift away all non-payload bits.
         arc4random_buf(&objc_debug_taggedpointer_obfuscator,
                        sizeof(objc_debug_taggedpointer_obfuscator));

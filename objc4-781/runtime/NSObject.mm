@@ -1584,6 +1584,7 @@ id
 objc_retain(id obj)
 {
     if (!obj) return obj;
+    //判断是否是小对象，如果是，则直接返回对象
     if (obj->isTaggedPointer()) return obj;
     return obj->retain();
 }
@@ -1594,6 +1595,7 @@ void
 objc_release(id obj)
 {
     if (!obj) return;
+    //如果是小对象，则直接返回
     if (obj->isTaggedPointer()) return;
     return obj->release();
 }
