@@ -473,6 +473,7 @@ map_images_nolock(unsigned mhCount, const char * const mhPaths[],
 
 
     // Find all images with Objective-C metadata.
+    //查找所有带有Objective-C元数据的镜像
     hCount = 0;
 
     // Count classes. Size various table based on the total.
@@ -588,6 +589,7 @@ map_images_nolock(unsigned mhCount, const char * const mhPaths[],
 
     }
 
+    //加载镜像文件
     if (hCount > 0) {
         _read_images(hList, hCount, totalClasses, unoptimizedTotalClasses);
     }

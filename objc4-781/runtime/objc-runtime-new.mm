@@ -3391,6 +3391,11 @@ void _read_images(header_info **hList, uint32_t hCount, int totalClasses, int un
     hIndex < hCount && (hi = hList[hIndex]); \
     hIndex++
 
+    /*
+     _read_images-1.条件控制进行的一次加载
+     在doneOnce流程中通过NXCreateMapTable 创建表，存放类信息，
+     即创建一张类的哈希表``gdb_objc_realized_classes，其目的是为了类查找方便、快捷
+    */
     if (!doneOnce) {
         doneOnce = YES;
         launchTime = YES;
@@ -3458,6 +3463,9 @@ void _read_images(header_info **hList, uint32_t hCount, int totalClasses, int un
         // namedClasses
         // Preoptimized classes don't go in this table.
         // 4/3 is NXMapTable's load factor
+        /*
+         这个哈希表用于存储不在共享缓存且已命名类，无论类是否实现，其容量是类数量的4/3
+         */
         int namedClassesSize = 
             (isPreoptimized() ? unoptimizedTotalClasses : totalClasses) * 4 / 3;
         gdb_objc_realized_classes =
@@ -3466,7 +3474,13 @@ void _read_images(header_info **hList, uint32_t hCount, int totalClasses, int un
         ts.log("IMAGE TIMES: first time tasks");
     }
 
+    
     // Fix up @selector references
+    //_read_images-2.修复预编译阶段的@selector的混乱问题
+    /*
+     主要是通过通过_getObjc2SelectorRefs拿到Mach_O中的静态段__objc_selrefs，
+     遍历列表调用sel_registerNameNoLock将SEL添加到namedSelectors哈希表中
+     */
     static size_t UnfixedSelectors;
     {
         mutex_locker_t lock(selLock);
@@ -3474,10 +3488,12 @@ void _read_images(header_info **hList, uint32_t hCount, int totalClasses, int un
             if (hi->hasPreoptimizedSelectors()) continue;
 
             bool isBundle = hi->isBundle();
+            //通过_getObjc2SelectorRefs拿到Mach-O中的静态段__objc_selrefs
             SEL *sels = _getObjc2SelectorRefs(hi, &count);
             UnfixedSelectors += count;
             for (i = 0; i < count; i++) {
                 const char *name = sel_cname(sels[i]);
+                //注册sel操作，即将sel添加到
                 SEL sel = sel_registerNameNoLock(name, isBundle);
                 if (sels[i] != sel) {
                     sels[i] = sel;
@@ -3489,6 +3505,7 @@ void _read_images(header_info **hList, uint32_t hCount, int totalClasses, int un
     ts.log("IMAGE TIMES: fix up selector references");
 
     // Discover classes. Fix up unresolved future classes. Mark bundle classes.
+    //_read_images-3.错误混乱的类处理
     bool hasDyldRoots = dyld_shared_cache_some_image_overridden();
 
     for (EACH_HEADER) {
@@ -3523,7 +3540,9 @@ void _read_images(header_info **hList, uint32_t hCount, int totalClasses, int un
     // Fix up remapped classes
     // Class list and nonlazy class list remain unremapped.
     // Class refs and super refs are remapped for message dispatching.
-    
+    /*
+     _read_images-4.修复重映射一些没有被镜像文件加载进来的类
+     */
     if (!noClassesRemapped()) {
         for (EACH_HEADER) {
             Class *classrefs = _getObjc2ClassRefs(hi, &count);
@@ -3542,6 +3561,7 @@ void _read_images(header_info **hList, uint32_t hCount, int totalClasses, int un
 
 #if SUPPORT_FIXUP
     // Fix up old objc_msgSend_fixup call sites
+    //_read_images-5.修复一些消息
     for (EACH_HEADER) {
         message_ref_t *refs = _getObjc2MessageRefs(hi, &count);
         if (count == 0) continue;
@@ -3561,6 +3581,7 @@ void _read_images(header_info **hList, uint32_t hCount, int totalClasses, int un
     bool cacheSupportsProtocolRoots = sharedCacheSupportsProtocolRoots();
 
     // Discover protocols. Fix up protocol refs.
+    //_read_images-6.当类里面有协议时：readProtocol 读取协议
     for (EACH_HEADER) {
         extern objc_class OBJC_CLASS_$_Protocol;
         Class cls = (Class)&OBJC_CLASS_$_Protocol;
@@ -3596,6 +3617,7 @@ void _read_images(header_info **hList, uint32_t hCount, int totalClasses, int un
     // Fix up @protocol references
     // Preoptimized images may have the right 
     // answer already but we don't know for sure.
+    //_read_images-7.修复没有被加载的协议
     for (EACH_HEADER) {
         // At launch time, we know preoptimized image refs are pointing at the
         // shared cache definition of a protocol.  We can skip the check on
@@ -3615,6 +3637,7 @@ void _read_images(header_info **hList, uint32_t hCount, int totalClasses, int un
     // attachment has been done. For categories present at startup,
     // discovery is deferred until the first load_images call after
     // the call to _dyld_objc_notify_register completes. rdar://problem/53119145
+    //_read_images-8.分类处理
     if (didInitialAttachCategories) {
         for (EACH_HEADER) {
             load_categories_nolock(hi);
@@ -3630,6 +3653,7 @@ void _read_images(header_info **hList, uint32_t hCount, int totalClasses, int un
     // +load handled by prepare_load_methods()
 
     // Realize non-lazy classes (for +load methods and static instances)
+    //_read_images-9.类的加载处理
     for (EACH_HEADER) {
         classref_t const *classlist = 
             _getObjc2NonlazyClassList(hi, &count);
@@ -3656,6 +3680,7 @@ void _read_images(header_info **hList, uint32_t hCount, int totalClasses, int un
     ts.log("IMAGE TIMES: realize non-lazy classes");
 
     // Realize newly-resolved future classes, in case CF manipulates them
+    //_read_images-10.没有被处理的类，优化那些被侵犯的类
     if (resolvedFutureClasses) {
         for (i = 0; i < resolvedFutureClassCount; i++) {
             Class cls = resolvedFutureClasses[i];
